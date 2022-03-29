@@ -55,15 +55,15 @@ int FindNearest(const int val, const unsigned int snap)
 
 BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
-	const unsigned int RESOLUTION_WIDTH = 1920;
-	const unsigned int RESOLUTION_HEIGHT = 1080;
+	const unsigned int SNAP_WIDTH = 1920;
+	const unsigned int SNAP_HEIGHT = 1080;
 
 	int* monitorCount = (int*)dwData;
 	(*monitorCount)++;
-	int top = FindNearest(lprcMonitor->top, RESOLUTION_HEIGHT);
-	int left = FindNearest(lprcMonitor->left, RESOLUTION_WIDTH);
-	int bottom = FindNearest(lprcMonitor->bottom, RESOLUTION_HEIGHT);
-	int right = FindNearest(lprcMonitor->right, RESOLUTION_WIDTH);
+	int top = FindNearest(lprcMonitor->top, SNAP_HEIGHT);
+	int left = FindNearest(lprcMonitor->left, SNAP_WIDTH);
+	int bottom = FindNearest(lprcMonitor->bottom, SNAP_HEIGHT);
+	int right = FindNearest(lprcMonitor->right, SNAP_WIDTH);
 	int width = abs(lprcMonitor->left - lprcMonitor->right);
 	int height = abs(lprcMonitor->top - lprcMonitor->bottom);
 	cout << "*Monitor " << *monitorCount;
@@ -74,6 +74,37 @@ BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor
 	cout << "\tWidth: " << setw(5) << width;
 	cout << "\tHeight: " << setw(5) << height;
 	cout << endl;
+
+	// Update monitor position if we need to snap
+	if (top != lprcMonitor->top ||
+		left != lprcMonitor->left ||
+		bottom != lprcMonitor->bottom ||
+		right != lprcMonitor->right)
+	{
+		if (true)
+		{
+			// ref: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changedisplaysettingsexa
+
+			DEVMODE devMode;
+			ZeroMemory(&devMode, sizeof(devMode));
+			devMode.dmSize = sizeof(devMode);
+
+			devMode.dmFields = DM_POSITION;
+
+			RECT rect;
+			rect.top = top;
+			rect.left = left;
+			rect.bottom = bottom;
+			rect.right = right;
+
+			ChangeDisplaySettingsEx(NULL, &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, &rect);
+			ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL); //apply cchanges
+			if (true)
+			{
+
+			}
+		}
+	}
 	return TRUE;
 }
 
