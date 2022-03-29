@@ -53,6 +53,28 @@ int FindNearest(const int val, const unsigned int snap)
 	return val + snap - remainder;
 }
 
+const char* GetErrorMessageString(int result)
+{
+	switch (result)
+	{
+	case DISP_CHANGE_RESTART:
+		return "The computer must be restarted for the graphics mode to work.";
+	case DISP_CHANGE_FAILED:
+		return "The display driver failed the specified graphics mode.";
+	case DISP_CHANGE_BADMODE:
+		return "The graphics mode is not supported.";
+	case DISP_CHANGE_NOTUPDATED:
+		return "Windows NT/2000/XP: Unable to write settings to the registry.";
+	case DISP_CHANGE_BADFLAGS:
+		return "An invalid set of flags was passed in.";
+	case DISP_CHANGE_BADPARAM:
+		return "An invalid parameter was passed in. This can include an invalid flag or combination of flags.";
+	case DISP_CHANGE_BADDUALVIEW:
+		return "Windows XP: The settings change was unsuccessful because the system is DualView capable.";
+	}
+	return "Unknown Error";
+}
+
 BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	const unsigned int SNAP_WIDTH = 1920;
@@ -97,11 +119,28 @@ BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor
 			rect.bottom = bottom;
 			rect.right = right;
 
-			ChangeDisplaySettingsEx(NULL, &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, &rect);
-			ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL); //apply cchanges
-			if (true)
-			{
+			DISPLAY_DEVICE displayDevice;
+			memset(&displayDevice, 0, sizeof(displayDevice));
+			displayDevice.cb = sizeof(displayDevice);
 
+			DWORD d = *monitorCount;
+			EnumDisplayDevices(NULL, d, &displayDevice, 0);
+
+			// below needs work, only run if you want to randomize your monitor locations
+			if (false)
+			{
+				LONG res = ChangeDisplaySettingsEx(displayDevice.DeviceName, &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, &rect);
+				if (res != DISP_CHANGE_SUCCESSFUL)
+				{
+					const char* error = GetErrorMessageString(res);
+					cerr << endl << "Error: " << error << endl;
+
+				}
+				ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL); //apply cchanges
+				if (true)
+				{
+
+				}
 			}
 		}
 	}
