@@ -10,22 +10,26 @@ using namespace std;
 
 BOOL CALLBACK DisplayMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
-	unsigned int* monitorCount = (unsigned int*)dwData;
-	(*monitorCount)++;
 	int top = lprcMonitor->top;
 	int left = lprcMonitor->left;
 	int bottom = lprcMonitor->bottom;
 	int right = lprcMonitor->right;
 	int width = abs(lprcMonitor->left - lprcMonitor->right);
 	int height = abs(lprcMonitor->top - lprcMonitor->bottom);
-	cout << "Monitor " << *monitorCount;
-	cout << "\tTop: " << setw(5) << top;
-	cout << "\tLeft: " << setw(5) << left;
-	cout << "\tBottom: " << setw(5) << bottom;
-	cout << "\tRight: " << setw(5) << right;
-	cout << "\tWidth: " << setw(5) << width;
-	cout << "\tHeight: " << setw(5) << height;
-	cout << endl;
+
+	MONITORINFOEX mi;
+	mi.cbSize = sizeof(mi);
+	if (GetMonitorInfo(hMonitor, &mi))
+	{
+		wcout << mi.szDevice;
+		cout << "\tTop: " << setw(5) << top;
+		cout << "\tLeft: " << setw(5) << left;
+		cout << "\tBottom: " << setw(5) << bottom;
+		cout << "\tRight: " << setw(5) << right;
+		cout << "\tWidth: " << setw(5) << width;
+		cout << "\tHeight: " << setw(5) << height;
+		cout << endl;
+	}
 	return TRUE;
 }
 
@@ -76,23 +80,22 @@ const char* GetErrorMessageString(int result)
 	return "Unknown Error";
 }
 
-void SnapMonitors(const unsigned int monitorCount)
+BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	const unsigned int SNAP_WIDTH = 1920;
 	const unsigned int SNAP_HEIGHT = 1080;
 
-	for (unsigned int display = 1; display <= monitorCount; ++display)
-	{	
+	MONITORINFOEX mi;
+	mi.cbSize = sizeof(mi);
+	if (GetMonitorInfo(hMonitor, &mi))
+	{
 		DEVMODE devMode;
 		ZeroMemory(&devMode, sizeof(devMode));
 		devMode.dmSize = sizeof(devMode);
 
 		devMode.dmFields = DM_POSITION;
 
-		wstring deviceName = L"\\\\.\\DISPLAY";
-		deviceName += to_wstring(display);
-
-		if (EnumDisplaySettings(deviceName.c_str(), ENUM_CURRENT_SETTINGS, &devMode))
+		if (EnumDisplaySettings(mi.szDevice, ENUM_CURRENT_SETTINGS, &devMode))
 		{
 			int x = FindNearest(devMode.dmPosition.x, SNAP_WIDTH);
 			int y = FindNearest(devMode.dmPosition.y, SNAP_HEIGHT);
@@ -101,9 +104,9 @@ void SnapMonitors(const unsigned int monitorCount)
 				devMode.dmPosition.x = x;
 				devMode.dmPosition.y = y;
 
-				wcout << "Updating " << deviceName << endl;
+				wcout << "Updating " << mi.szDevice << endl;
 
-				LONG res = ChangeDisplaySettingsEx(deviceName.c_str(), &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, NULL);
+				LONG res = ChangeDisplaySettingsEx(mi.szDevice, &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, NULL);
 				if (res != DISP_CHANGE_SUCCESSFUL)
 				{
 					const char* error = GetErrorMessageString(res);
@@ -116,27 +119,29 @@ void SnapMonitors(const unsigned int monitorCount)
 			}
 		}			
 	}
+	return TRUE;
 }
 
 int main()
 {
 	cout << "Original Positions:" << endl;
 	cout << "------" << endl;
-	unsigned int monitorCount = 0;
-	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, (LPARAM)&monitorCount))
+	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, NULL))
 	{
 
 	}
 
 	cout << endl;
 
-	SnapMonitors(monitorCount);
+	if (EnumDisplayMonitors(NULL, NULL, SnapMonitors, NULL))
+	{
+
+	}
 
 	cout << "Aligned Positions:" << endl;
 	cout << "------" << endl;
 
-	monitorCount = 0;
-	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, (LPARAM)&monitorCount))
+	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, NULL))
 	{
 	}
 }
