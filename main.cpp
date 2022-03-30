@@ -133,10 +133,15 @@ int main()
 
 	cout << endl;
 
+	cout << "Snapping Displays:" << endl;
+	cout << "------" << endl;
+
 	if (EnumDisplayMonitors(NULL, NULL, SnapMonitors, NULL))
 	{
 
 	}
+
+	cout << endl;
 
 	cout << "Aligned Positions:" << endl;
 	cout << "------" << endl;
