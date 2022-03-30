@@ -2,6 +2,7 @@
 //
 
 #include <Windows.h>
+#include <string>
 #include <iomanip>
 #include <iostream>
 
@@ -9,7 +10,7 @@ using namespace std;
 
 BOOL CALLBACK DisplayMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
-	int* monitorCount = (int*)dwData;
+	unsigned int* monitorCount = (unsigned int*)dwData;
 	(*monitorCount)++;
 	int top = lprcMonitor->top;
 	int left = lprcMonitor->left;
@@ -75,83 +76,53 @@ const char* GetErrorMessageString(int result)
 	return "Unknown Error";
 }
 
-BOOL CALLBACK SnapMonitors(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+void SnapMonitors(const unsigned int monitorCount)
 {
 	const unsigned int SNAP_WIDTH = 1920;
 	const unsigned int SNAP_HEIGHT = 1080;
 
-	int* monitorCount = (int*)dwData;
-	(*monitorCount)++;
-	int top = FindNearest(lprcMonitor->top, SNAP_HEIGHT);
-	int left = FindNearest(lprcMonitor->left, SNAP_WIDTH);
-	int bottom = FindNearest(lprcMonitor->bottom, SNAP_HEIGHT);
-	int right = FindNearest(lprcMonitor->right, SNAP_WIDTH);
-	int width = abs(lprcMonitor->left - lprcMonitor->right);
-	int height = abs(lprcMonitor->top - lprcMonitor->bottom);
-	cout << "*Monitor " << *monitorCount;
-	cout << "\tTop: " << setw(5) << top;
-	cout << "\tLeft: " << setw(5) << left;
-	cout << "\tBottom: " << setw(5) << bottom;
-	cout << "\tRight: " << setw(5) << right;
-	cout << "\tWidth: " << setw(5) << width;
-	cout << "\tHeight: " << setw(5) << height;
-	cout << endl;
+	for (unsigned int display = 1; display <= monitorCount; ++display)
+	{	
+		DEVMODE devMode;
+		ZeroMemory(&devMode, sizeof(devMode));
+		devMode.dmSize = sizeof(devMode);
 
-	// Update monitor position if we need to snap
-	if (top != lprcMonitor->top ||
-		left != lprcMonitor->left ||
-		bottom != lprcMonitor->bottom ||
-		right != lprcMonitor->right)
-	{
-		if (true)
+		devMode.dmFields = DM_POSITION;
+
+		wstring deviceName = L"\\\\.\\DISPLAY";
+		deviceName += to_wstring(display);
+
+		if (EnumDisplaySettings(deviceName.c_str(), ENUM_CURRENT_SETTINGS, &devMode))
 		{
-			// ref: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changedisplaysettingsexa
-
-			DEVMODE devMode;
-			ZeroMemory(&devMode, sizeof(devMode));
-			devMode.dmSize = sizeof(devMode);
-
-			devMode.dmFields = DM_POSITION;
-
-			RECT rect;
-			rect.top = top;
-			rect.left = left;
-			rect.bottom = bottom;
-			rect.right = right;
-
-			DISPLAY_DEVICE displayDevice;
-			memset(&displayDevice, 0, sizeof(displayDevice));
-			displayDevice.cb = sizeof(displayDevice);
-
-			DWORD d = *monitorCount;
-			EnumDisplayDevices(NULL, d, &displayDevice, 0);
-
-			// below needs work, only run if you want to randomize your monitor locations
-			if (false)
+			int x = FindNearest(devMode.dmPosition.x, SNAP_WIDTH);
+			int y = FindNearest(devMode.dmPosition.y, SNAP_HEIGHT);
+			if (devMode.dmPosition.x != x || devMode.dmPosition.y != y)
 			{
-				LONG res = ChangeDisplaySettingsEx(displayDevice.DeviceName, &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, &rect);
+				devMode.dmPosition.x = x;
+				devMode.dmPosition.y = y;
+
+				wcout << "Updating " << deviceName << endl;
+
+				LONG res = ChangeDisplaySettingsEx(deviceName.c_str(), &devMode, NULL, CDS_UPDATEREGISTRY | CDS_NORESET, NULL);
 				if (res != DISP_CHANGE_SUCCESSFUL)
 				{
 					const char* error = GetErrorMessageString(res);
 					cerr << endl << "Error: " << error << endl;
 
 				}
-				ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL); //apply cchanges
-				if (true)
-				{
+				ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL); //apply changes
 
-				}
+				Sleep(5000);
 			}
-		}
+		}			
 	}
-	return TRUE;
 }
 
 int main()
 {
 	cout << "Original Positions:" << endl;
 	cout << "------" << endl;
-	int monitorCount = 0;
+	unsigned int monitorCount = 0;
 	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, (LPARAM)&monitorCount))
 	{
 
@@ -159,12 +130,13 @@ int main()
 
 	cout << endl;
 
+	SnapMonitors(monitorCount);
+
 	cout << "Aligned Positions:" << endl;
 	cout << "------" << endl;
 
 	monitorCount = 0;
-	if (EnumDisplayMonitors(NULL, NULL, SnapMonitors, (LPARAM)&monitorCount))
+	if (EnumDisplayMonitors(NULL, NULL, DisplayMonitors, (LPARAM)&monitorCount))
 	{
-
 	}
 }
